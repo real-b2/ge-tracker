@@ -151,15 +151,19 @@ function doSearch(){
 }
 function pin(id){if(!pins.includes(id)){pins.push(id);save();renderPins();doSearch();}}
 function unpin(id){pins=pins.filter(p=>p!==id);save();renderPins();doSearch();}
+let lastSig="~~~";
 function renderPins(){
   countEl.textContent=pins.length;
+  const sig=pins.join(",");
+  if(sig===lastSig){updateValues();return;}
+  lastSig=sig;
   pinsEl.innerHTML="";
   if(!pins.length){pinsEl.innerHTML='<div class="empty">Nothing pinned yet — search the item list and hit Pin.<br><br><button type="button" class="small primary" id="gosearch">Go to Search</button></div>';const g=document.getElementById("gosearch");if(g)g.onclick=()=>showTab("search");return;}
   pins.forEach(id=>{
     const m=byId.get(id)||{id,name:"#"+id,limit:null};
     const p=latest[id]||{};
     const margin=(p.high!=null&&p.low!=null)?p.high-p.low:null;
-    const d=document.createElement("div");d.className="row";
+    const d=document.createElement("div");d.className="row";d.dataset.pid=id;
     d.innerHTML='<div class="cardhead"><img loading="lazy" alt=""><h2><a target="_blank" rel="noopener"></a></h2></div><div class="tags"></div>'
       +'<div class="prices"><div class="px buy"><span>Buy (high)</span><b></b><span class="t"></span></div>'
       +'<div class="px sell"><span>Sell (low)</span><b></b><span class="t"></span></div>'
@@ -187,6 +191,19 @@ function renderPins(){
     u.setAttribute("aria-label","Unpin "+m.name);u.onclick=()=>unpin(id);btns.appendChild(u);
     pinsEl.appendChild(d);
     loadTrend(id);
+  });
+}
+function updateValues(){
+  pins.forEach(id=>{
+    const root=pinsEl.querySelector('[data-pid="'+id+'"]');
+    if(!root)return;
+    const p=latest[id]||{};
+    const margin=(p.high!=null&&p.low!=null)?p.high-p.low:null;
+    const bs=root.querySelectorAll(".px b"),ts=root.querySelectorAll(".px .t");
+    if(!bs.length)return;
+    bs[0].textContent=fmt(p.high);ts[0].textContent="updated "+ago(p.highTime);
+    bs[1].textContent=fmt(p.low);ts[1].textContent="updated "+ago(p.lowTime);
+    bs[2].textContent=margin==null?"—":(margin>=0?"+":"")+Math.round(margin).toLocaleString("en-US")+" gp";
   });
 }
 const trends=new Map();
