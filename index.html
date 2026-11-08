@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GE Tracker — OSRS price pins</title>
+<meta name="description" content="Search OSRS Grand Exchange items, pin favorites, and track live buy/sell prices.">
+<meta name="theme-color" content="#0b0f22">
+<style>
+:root{--bg:#f6f3fb;--panel:#fff;--ink:#241a3a;--mute:#5d5478;--gold:#a87200;--violet:#6b3fd0;--green:#1d8a4e;--red:#c62f4a;--blue:#1c6fc4;box-sizing:border-box}
+:root[data-theme="dark"]{--bg:#150e28;--panel:#211740;--ink:#f3eeff;--mute:#b7abd6;--gold:#ffc83d;--violet:#a98bff;--green:#4be08a;--red:#ff6b81;--blue:#5cb4ff}
+:root[data-theme="midnight"]{--bg:#0b0f22;--panel:#151b36;--ink:#e8e2d4;--mute:#8f97b8;--gold:#c9a45c;--violet:#8f86c2;--green:#6fae8e;--red:#c07a88;--blue:#6f93bd}
+*{box-sizing:border-box}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,sans-serif;line-height:1.5}
+main{max-width:720px;margin:0 auto;padding:32px 16px 48px}
+h1{font-family:Quicksand,system-ui,sans-serif;font-weight:800;font-size:clamp(2rem,7vw,3rem);margin:0;text-align:center}
+.sub{font-family:Quicksand,system-ui,sans-serif;font-weight:600;font-size:1.1rem;color:var(--gold);margin:6px 0 24px;text-align:center}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
+.search{flex:1 1 260px;display:flex;gap:8px}
+input[type=search]{flex:1;font:600 1rem Nunito,system-ui,sans-serif;color:var(--ink);background:var(--panel);border:1.5px solid var(--violet);border-radius:99px;padding:10px 16px}
+input[type=search]:focus-visible,button:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+button{font:700 .9rem Nunito,system-ui,sans-serif;color:var(--ink);background:var(--panel);border:1.5px solid var(--violet);border-radius:99px;padding:10px 18px;cursor:pointer}
+button:hover{background:color-mix(in srgb,var(--violet) 18%,transparent)}
+button.primary{background:var(--violet);color:#fff;border-color:var(--violet)}
+button.ghost{border-color:color-mix(in srgb,var(--violet) 40%,transparent);color:var(--mute)}
+button.small{padding:5px 12px;font-size:.8rem}
+.results{display:grid;gap:8px;margin:0 0 18px;padding:0;list-style:none}
+.results li{display:flex;align-items:center;gap:10px;background:var(--panel);border:1.5px solid color-mix(in srgb,var(--violet) 40%,transparent);border-radius:12px;padding:8px 12px;animation:rise .3s ease both}
+.results .nm{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.results .meta{font-size:.75rem;color:var(--mute);font-weight:600}
+.row{background:var(--panel);border-left:6px solid var(--violet);border-radius:6px 18px 18px 6px;padding:16px 18px;margin-bottom:14px;animation:rise .45s ease both}
+.row h2{font-family:Quicksand,system-ui,sans-serif;font-size:1.2rem;margin:0 0 4px}
+.row h2 a{color:var(--ink);text-decoration:none}
+.row h2 a:hover{color:var(--gold)}
+.tag{display:inline-block;font-weight:700;font-size:.75rem;color:var(--violet);border:1.5px solid var(--violet);border-radius:99px;padding:0 10px;margin:0 6px 6px 0;white-space:nowrap}
+.prices{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.px{flex:1 1 140px;border:1.5px solid color-mix(in srgb,var(--violet) 35%,transparent);border-radius:12px;padding:8px 12px}
+.px b{display:block;font-family:Quicksand,system-ui,sans-serif;font-size:1.15rem}
+.px span{font-size:.75rem;font-weight:700;color:var(--mute)}
+.px.buy b{color:var(--green)}.px.sell b{color:var(--red)}.px.margin b{color:var(--gold)}
+.foot{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap}
+.ago{font-size:.8rem;color:var(--mute);font-weight:600}
+.empty{background:var(--panel);border:2px dashed var(--violet);border-radius:18px;padding:24px;text-align:center;color:var(--mute)}
+.status{text-align:center;color:var(--mute);font-size:.85rem;font-weight:600;margin:10px 0}
+footer{text-align:center;color:var(--mute);font-size:.8rem;margin-top:26px}
+footer a{color:var(--gold)}
+.top{display:flex;justify-content:center;margin-bottom:16px}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<main>
+<h1>GE Tracker</h1>
+<p class="sub">Pin OSRS items &amp; watch live Grand Exchange prices</p>
+<div class="top"><button class="ghost small" id="themebtn" type="button">Theme: Midnight</button></div>
+<div class="bar">
+<div class="search"><input type="search" id="q" placeholder="Search items… e.g. abyssal whip" autocomplete="off" aria-label="Search items"></div>
+<button id="refresh" type="button">Refresh prices</button>
+</div>
+<div class="status" id="status">Loading item list…</div>
+<ul class="results" id="results"></ul>
+<h2 style="font-family:Quicksand">Pinned (<span id="count">0</span>)</h2>
+<div id="pins"></div>
+<footer>Prices by the <a href="https://oldschool.runescape.wiki/w/RuneScape:Real-time_Prices">OSRS Wiki real-time API</a> (data from Jagex). This is a fan tool, not affiliated with Jagex.</footer>
+</main>
+<script>
+"use strict";
+const API="https://prices.runescape.wiki/api/v2/osrs";
+const $=id=>document.getElementById(id);
+const q=$("q"),results=$("results"),pinsEl=$("pins"),statusEl=$("status"),countEl=$("count");
+let mapping=[];const byId=new Map();let latest={};let pins=[];
+try{pins=JSON.parse(localStorage.getItem("ge-pins")||"[]").map(Number).filter(n=>n>0);}catch(e){pins=[];}
+function save(){localStorage.setItem("ge-pins",JSON.stringify(pins));}
+function fmt(n){if(n==null)return"—";return Math.round(n).toLocaleString("en-US")+" gp";}
+function ago(t){if(!t)return"never";const s=Math.max(0,(Date.now()/1000-t)|0);if(s<60)return s+"s ago";const m=(s/60)|0;if(m<60)return m+"m ago";const h=(m/60)|0;if(h<24)return h+"h ago";return ((h/24)|0)+"d ago";}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+async function loadMapping(){
+  try{
+    const raw=localStorage.getItem("ge-mapping");const ts=+(localStorage.getItem("ge-mapping-ts")||0);
+    if(raw&&Date.now()-ts<24*3600*1000){mapping=JSON.parse(raw);}
+  }catch(e){}
+  if(!mapping.length){
+    const r=await fetch(API+"/mapping");if(!r.ok)throw new Error("mapping "+r.status);
+    mapping=await r.json();
+    try{localStorage.setItem("ge-mapping",JSON.stringify(mapping));localStorage.setItem("ge-mapping-ts",String(Date.now()));}catch(e){}
+  }
+  mapping.forEach(m=>byId.set(m.id,m));
+  statusEl.textContent=mapping.length.toLocaleString()+" items loaded. Search above to pin.";
+  renderPins();
+}
+async function loadPrices(){
+  statusEl.textContent="Fetching live prices…";
+  const r=await fetch(API+"/latest");if(!r.ok)throw new Error("latest "+r.status);
+  const j=await r.json();latest=j.data||{};
+  statusEl.textContent="Live prices updated "+new Date().toLocaleTimeString()+". Auto-refreshes every 60s.";
+  renderPins();
+}
+function doSearch(){
+  const s=q.value.trim().toLowerCase();results.innerHTML="";
+  if(s.length<2||!mapping.length)return;
+  const pinned=new Set(pins);
+  const out=[];
+  for(const m of mapping){const n=m.name.toLowerCase();if(!n.includes(s))continue;out.push(m);if(out.length>400)break;}
+  out.sort((a,b)=>(b.name.toLowerCase().startsWith(s)-a.name.toLowerCase().startsWith(s))||a.name.localeCompare(b.name));
+  out.slice(0,20).forEach(m=>{
+    const li=document.createElement("li");
+    li.innerHTML='<span class="nm"></span><span class="meta"></span>';
+    li.querySelector(".nm").textContent=m.name;
+    li.querySelector(".meta").textContent=(m.members?"Members":"F2P")+" · limit "+(m.limit||"?");
+    const b=document.createElement("button");b.type="button";b.className="small"+(pinned.has(m.id)?"":" primary");
+    b.textContent=pinned.has(m.id)?"Pinned ✓":"Pin";
+    b.disabled=pinned.has(m.id);
+    b.onclick=()=>{pin(m.id);};
+    li.appendChild(b);results.appendChild(li);
+  });
+}
+function pin(id){if(!pins.includes(id)){pins.push(id);save();renderPins();doSearch();}}
+function unpin(id){pins=pins.filter(p=>p!==id);save();renderPins();doSearch();}
+function renderPins(){
+  countEl.textContent=pins.length;
+  pinsEl.innerHTML="";
+  if(!pins.length){pinsEl.innerHTML='<div class="empty">Nothing pinned yet — search above and hit Pin.<br>Your pins save in this browser automatically.</div>';return;}
+  pins.forEach(id=>{
+    const m=byId.get(id)||{id,name:"#"+id,limit:null};
+    const p=latest[id]||{};
+    const margin=(p.high!=null&&p.low!=null)?p.high-p.low:null;
+    const d=document.createElement("div");d.className="row";
+    d.innerHTML='<h2><a target="_blank" rel="noopener"></a></h2><div class="tags"></div>'
+      +'<div class="prices"><div class="px buy"><span>Buy (high)</span><b></b><span class="t"></span></div>'
+      +'<div class="px sell"><span>Sell (low)</span><b></b><span class="t"></span></div>'
+      +'<div class="px margin"><span>Margin</span><b></b><span class="t"></span></div></div>'
+      +'<div class="foot"><span class="ago"></span><span class="btns"></span></div>';
+    const a=d.querySelector("h2 a");a.textContent=m.name;a.href="https://prices.runescape.wiki/osrs/item/"+id;
+    const tags=d.querySelector(".tags");
+    let tagHtml="";
+    if(m.limit)tagHtml+='<span class="tag">Limit '+m.limit+"</span>";
+    if(m.members===true)tagHtml+='<span class="tag">Members</span>';
+    if(m.members===false)tagHtml+='<span class="tag">F2P</span>';
+    tags.innerHTML=tagHtml;
+    const bs=d.querySelectorAll(".px b"),ts=d.querySelectorAll(".px .t");
+    bs[0].textContent=fmt(p.high);ts[0].textContent="updated "+ago(p.highTime);
+    bs[1].textContent=fmt(p.low);ts[1].textContent="updated "+ago(p.lowTime);
+    bs[2].textContent=margin==null?"—":(margin>=0?"+":"")+Math.round(margin).toLocaleString("en-US")+" gp";
+    ts[2].textContent=m.name?"tap name for wiki chart":"";
+    d.querySelector(".ago").textContent="ID "+id;
+    const btns=d.querySelector(".btns");
+    const u=document.createElement("button");u.type="button";u.className="small ghost";u.textContent="Unpin";
+    u.setAttribute("aria-label","Unpin "+m.name);u.onclick=()=>unpin(id);btns.appendChild(u);
+    pinsEl.appendChild(d);
+  });
+}
+q.addEventListener("input",doSearch);
+$("refresh").addEventListener("click",()=>loadPrices().catch(e=>statusEl.textContent="Price fetch failed: "+e.message));
+const themes=["midnight","dark","light"];let ti=0;
+const tb=$("themebtn");
+try{const s=localStorage.getItem("ge-theme");if(s){ti=Math.max(0,themes.indexOf(s));}}catch(e){}
+function applyTheme(){document.documentElement.dataset.theme=themes[ti];tb.textContent="Theme: "+themes[ti][0].toUpperCase()+themes[ti].slice(1);try{localStorage.setItem("ge-theme",themes[ti]);}catch(e){}}
+tb.onclick=()=>{ti=(ti+1)%themes.length;applyTheme();};applyTheme();
+loadMapping().then(()=>loadPrices()).catch(e=>statusEl.textContent="Load failed: "+e.message+" — retry in a bit.");
+setInterval(()=>loadPrices().catch(()=>{}),60000);
+</script>
+</body>
+</html>
