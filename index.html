@@ -62,6 +62,10 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--violet
 #pins{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
 #pins .row{margin-bottom:0}
 #pins .empty{grid-column:1/-1}
+.results img{width:34px;height:34px;object-fit:contain;flex:none}
+.cardhead{display:flex;gap:10px;align-items:center;margin-bottom:4px}
+.cardhead img{width:46px;height:46px;object-fit:contain;flex:none}
+.cardhead h2{margin:0}
 .dashbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
 .dashbar h2{font-family:Quicksand,system-ui,sans-serif;margin:0}
 </style>
@@ -132,7 +136,10 @@ function doSearch(){
   out.sort((a,b)=>(b.name.toLowerCase().startsWith(s)-a.name.toLowerCase().startsWith(s))||a.name.localeCompare(b.name));
   out.slice(0,20).forEach(m=>{
     const li=document.createElement("li");
-    li.innerHTML='<span class="nm"></span><span class="meta"></span>';
+    li.innerHTML='<img loading="lazy" alt=""><span class="nm"></span><span class="meta"></span>';
+    const lim=li.querySelector("img");
+    if(m.icon){lim.src="https://oldschool.runescape.wiki/w/Special:FilePath/"+encodeURIComponent(m.icon);lim.onerror=()=>{lim.style.display="none";};}
+    else lim.style.display="none";
     li.querySelector(".nm").textContent=m.name;
     li.querySelector(".meta").textContent=(m.members?"Members":"F2P")+" · limit "+(m.limit||"?");
     const b=document.createElement("button");b.type="button";b.className="small"+(pinned.has(m.id)?"":" primary");
@@ -153,13 +160,16 @@ function renderPins(){
     const p=latest[id]||{};
     const margin=(p.high!=null&&p.low!=null)?p.high-p.low:null;
     const d=document.createElement("div");d.className="row";
-    d.innerHTML='<h2><a target="_blank" rel="noopener"></a></h2><div class="tags"></div>'
+    d.innerHTML='<div class="cardhead"><img loading="lazy" alt=""><h2><a target="_blank" rel="noopener"></a></h2></div><div class="tags"></div>'
       +'<div class="prices"><div class="px buy"><span>Buy (high)</span><b></b><span class="t"></span></div>'
       +'<div class="px sell"><span>Sell (low)</span><b></b><span class="t"></span></div>'
       +'<div class="px margin"><span>Margin</span><b></b><span class="t"></span></div></div>'
       +'<div class="trend" id="trend-'+id+'"><span class="ago">Loading 30-day trend…</span></div>'
       +'<div class="foot"><span class="ago"></span><span class="btns"></span></div>';
     const a=d.querySelector("h2 a");a.textContent=m.name;a.href="https://prices.runescape.wiki/osrs/item/"+id;
+    const cim=d.querySelector(".cardhead img");
+    if(m.icon){cim.src="https://oldschool.runescape.wiki/w/Special:FilePath/"+encodeURIComponent(m.icon);cim.onerror=()=>{cim.style.display="none";};}
+    else cim.style.display="none";
     const tags=d.querySelector(".tags");
     let tagHtml="";
     if(m.limit)tagHtml+='<span class="tag">Limit '+m.limit+"</span>";
