@@ -54,24 +54,41 @@ button.small{padding:5px 12px;font-size:.8rem}
 footer{text-align:center;color:var(--mute);font-size:.8rem;margin-top:26px}
 footer a{color:var(--gold)}
 .top{display:flex;justify-content:center;margin-bottom:16px}
+main.wide{max-width:1180px}
+nav.tabs{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;justify-content:center;gap:8px;padding:12px 8px;border-bottom:1.5px solid color-mix(in srgb,var(--violet) 35%,transparent)}
+nav.tabs button{font:700 1rem Nunito,system-ui,sans-serif;color:var(--mute);background:none;border:2px solid transparent;border-radius:99px;padding:8px 22px;cursor:pointer}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--violet);background:color-mix(in srgb,var(--violet) 18%,transparent)}
+.panel[hidden]{display:none}
+#pins{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+#pins .row{margin-bottom:0}
+#pins .empty{grid-column:1/-1}
+.dashbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+.dashbar h2{font-family:Quicksand,system-ui,sans-serif;margin:0}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-<main>
+<main id="main">
 <h1>GE Tracker</h1>
 <p class="sub">Pin OSRS items &amp; watch live Grand Exchange prices</p>
 <div class="top"><button class="ghost small" id="themebtn" type="button">Theme: Midnight</button></div>
+<nav class="tabs" role="tablist" aria-label="Tracker sections">
+<button id="tabbtn-search" role="tab" aria-selected="true" aria-controls="tab-search" type="button">Search</button>
+<button id="tabbtn-dash" role="tab" aria-selected="false" aria-controls="tab-dash" type="button">Dashboard (<span id="count">0</span>)</button>
+</nav>
+<div class="status" id="status">Loading item list…</div>
+<section class="panel" id="tab-search" role="tabpanel" aria-labelledby="tabbtn-search">
 <div class="bar">
 <div class="search"><input type="search" id="q" placeholder="Search items… e.g. abyssal whip" autocomplete="off" aria-label="Search items"></div>
-<button id="refresh" type="button">Refresh prices</button>
 </div>
-<div class="status" id="status">Loading item list…</div>
 <ul class="results" id="results"></ul>
-<h2 style="font-family:Quicksand">Pinned (<span id="count">0</span>)</h2>
+</section>
+<section class="panel" id="tab-dash" role="tabpanel" aria-labelledby="tabbtn-dash" hidden>
+<div class="dashbar"><h2>Your pins</h2><button id="refresh" type="button">Refresh prices</button></div>
 <div id="pins"></div>
+</section>
 <footer>Prices by the <a href="https://oldschool.runescape.wiki/w/RuneScape:Real-time_Prices">OSRS Wiki real-time API</a> (data from Jagex). This is a fan tool, not affiliated with Jagex.</footer>
 </main>
 <script>
@@ -130,7 +147,7 @@ function unpin(id){pins=pins.filter(p=>p!==id);save();renderPins();doSearch();}
 function renderPins(){
   countEl.textContent=pins.length;
   pinsEl.innerHTML="";
-  if(!pins.length){pinsEl.innerHTML='<div class="empty">Nothing pinned yet — search above and hit Pin.<br>Your pins save in this browser automatically.</div>';return;}
+  if(!pins.length){pinsEl.innerHTML='<div class="empty">Nothing pinned yet — search the item list and hit Pin.<br><br><button type="button" class="small primary" id="gosearch">Go to Search</button></div>';const g=document.getElementById("gosearch");if(g)g.onclick=()=>showTab("search");return;}
   pins.forEach(id=>{
     const m=byId.get(id)||{id,name:"#"+id,limit:null};
     const p=latest[id]||{};
@@ -206,6 +223,17 @@ const tb=$("themebtn");
 try{const s=localStorage.getItem("ge-theme");if(s){ti=Math.max(0,themes.indexOf(s));}}catch(e){}
 function applyTheme(){document.documentElement.dataset.theme=themes[ti];tb.textContent="Theme: "+themes[ti][0].toUpperCase()+themes[ti].slice(1);try{localStorage.setItem("ge-theme",themes[ti]);}catch(e){}}
 tb.onclick=()=>{ti=(ti+1)%themes.length;applyTheme();};applyTheme();
+const tabSearch=document.getElementById("tab-search"),tabDash=document.getElementById("tab-dash");
+const tabBtnSearch=document.getElementById("tabbtn-search"),tabBtnDash=document.getElementById("tabbtn-dash");
+function showTab(which){
+  const search=which!=="dash";
+  tabSearch.hidden=!search;tabDash.hidden=search;
+  tabBtnSearch.setAttribute("aria-selected",search);tabBtnDash.setAttribute("aria-selected",!search);
+  document.getElementById("main").classList.toggle("wide",!search);
+  try{localStorage.setItem("ge-tab",search?"search":"dash");}catch(e){}
+}
+tabBtnSearch.onclick=()=>showTab("search");tabBtnDash.onclick=()=>showTab("dash");
+try{if(localStorage.getItem("ge-tab")==="dash"&&pins.length)showTab("dash");}catch(e){}
 loadMapping().then(()=>loadPrices()).catch(e=>statusEl.textContent="Load failed: "+e.message+" — retry in a bit.");
 setInterval(()=>loadPrices().catch(()=>{}),60000);
 </script>
