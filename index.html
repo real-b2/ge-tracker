@@ -42,6 +42,13 @@ button.small{padding:5px 12px;font-size:.8rem}
 .px.buy b{color:var(--green)}.px.sell b{color:var(--red)}.px.margin b{color:var(--gold)}
 .foot{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap}
 .ago{font-size:.8rem;color:var(--mute);font-weight:600}
+.trend{margin-top:12px;border:1.5px solid color-mix(in srgb,var(--violet) 35%,transparent);border-radius:12px;padding:10px 12px}
+.trend .trow{display:flex;gap:8px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+.trend .tt{font-weight:800;font-family:Quicksand,system-ui,sans-serif}
+.trend .tc{font-weight:800}
+.trend .up{color:var(--green)}.trend .down{color:var(--red)}
+.trend svg{display:block;width:100%;height:90px;margin-top:6px}
+.trend .tsub{font-size:.75rem;color:var(--mute);font-weight:600;margin-top:4px}
 .empty{background:var(--panel);border:2px dashed var(--violet);border-radius:18px;padding:24px;text-align:center;color:var(--mute)}
 .status{text-align:center;color:var(--mute);font-size:.85rem;font-weight:600;margin:10px 0}
 footer{text-align:center;color:var(--mute);font-size:.8rem;margin-top:26px}
@@ -133,6 +140,7 @@ function renderPins(){
       +'<div class="prices"><div class="px buy"><span>Buy (high)</span><b></b><span class="t"></span></div>'
       +'<div class="px sell"><span>Sell (low)</span><b></b><span class="t"></span></div>'
       +'<div class="px margin"><span>Margin</span><b></b><span class="t"></span></div></div>'
+      +'<div class="trend" id="trend-'+id+'"><span class="ago">Loading 30-day trend…</span></div>'
       +'<div class="foot"><span class="ago"></span><span class="btns"></span></div>';
     const a=d.querySelector("h2 a");a.textContent=m.name;a.href="https://prices.runescape.wiki/osrs/item/"+id;
     const tags=d.querySelector(".tags");
@@ -151,7 +159,45 @@ function renderPins(){
     const u=document.createElement("button");u.type="button";u.className="small ghost";u.textContent="Unpin";
     u.setAttribute("aria-label","Unpin "+m.name);u.onclick=()=>unpin(id);btns.appendChild(u);
     pinsEl.appendChild(d);
+    loadTrend(id);
   });
+}
+const trends=new Map();
+function trendLine(pts,key,W,H,min,max){
+  return pts.map((p,i)=>{
+    const x=(i/(pts.length-1)*W).toFixed(1);
+    const y=(H-4-((p[key]-min)/(Math.max(1e-9,max-min))*(H-12))).toFixed(1);
+    return x+","+y;
+  }).join(" ");
+}
+async function loadTrend(id){
+  const el=document.getElementById("trend-"+id);
+  try{
+    let pts=trends.get(id);
+    if(!pts){
+      const r=await fetch(API+"/timeseries?lookback=30d&id="+id);
+      if(!r.ok)throw new Error("trend "+r.status);
+      const j=await r.json();
+      pts=(j.data||[]).filter(p=>p.avgHighPrice!=null);
+      trends.set(id,pts);
+    }
+    if(!document.getElementById("trend-"+id))return;
+    if(pts.length<2){el.innerHTML='<span class="ago">Not enough 30-day history for this item.</span>';return;}
+    const first=pts[0].avgHighPrice,last=pts[pts.length-1].avgHighPrice;
+    const chg=last-first,pct=first?chg/first*100:0;
+    const cls=chg>0?"up":chg<0?"down":"";
+    const vals=pts.flatMap(p=>[p.avgHighPrice,p.avgLowPrice||p.avgHighPrice]);
+    const min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);
+    const W=600,H=90;
+    const svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" aria-label="30-day price chart">'
+      +'<polyline points="'+trendLine(pts,"avgHighPrice",W,H,min,max)+'" fill="none" stroke="var(--gold)" stroke-width="2"/>'
+      +'<polyline points="'+pts.map((p,i)=>{const x=(i/(pts.length-1)*W).toFixed(1);const v=(p.avgLowPrice==null?p.avgHighPrice:p.avgLowPrice);const y=(H-4-((v-min)/(Math.max(1e-9,max-min))*(H-12))).toFixed(1);return x+","+y;}).join(" ")+'" fill="none" stroke="var(--violet)" stroke-width="1.5" opacity="0.8"/></svg>';
+    const verdict=pct<=-3?"Falling — waiting may save "+fmt(0-chg).replace(" gp","")+" gp":pct>=3?"Rising — buying sooner may save gold":"Flat — no strong timing signal";
+    el.innerHTML='<div class="trow"><span class="tt">30-day trend</span><span class="tc '+cls+'">'+(chg>=0?"+":"")+Math.round(chg).toLocaleString("en-US")+" gp ("+(pct>=0?"+":"")+pct.toFixed(1)+"%)</span></div>"
+      +svg+'<div class="tsub">30d range '+fmt(min)+" – "+fmt(max)+" · gold = buy avg, purple = sell avg · "+verdict+"</div>";
+  }catch(e){
+    if(el)el.innerHTML='<span class="ago">Trend unavailable right now.</span>';
+  }
 }
 q.addEventListener("input",doSearch);
 $("refresh").addEventListener("click",()=>loadPrices().catch(e=>statusEl.textContent="Price fetch failed: "+e.message));
