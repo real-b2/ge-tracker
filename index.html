@@ -30,6 +30,8 @@ button.small{padding:5px 12px;font-size:.8rem}
 .results li{display:flex;align-items:center;gap:10px;background:var(--panel);border:1.5px solid color-mix(in srgb,var(--violet) 40%,transparent);border-radius:12px;padding:8px 12px;animation:rise .3s ease both}
 .results .nm{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .results .meta{font-size:.75rem;color:var(--mute);font-weight:600}
+.results .p{font-size:.78rem;font-weight:700;white-space:nowrap}
+.results .p .buy{color:var(--green)}.results .p .sell{color:var(--red)}
 .row{background:var(--panel);border-left:6px solid var(--violet);border-radius:6px 18px 18px 6px;padding:16px 18px;margin-bottom:14px;animation:rise .45s ease both}
 .row h2{font-family:Quicksand,system-ui,sans-serif;font-size:1.2rem;margin:0 0 4px}
 .row h2 a{color:var(--ink);text-decoration:none}
@@ -104,6 +106,7 @@ let mapping=[];const byId=new Map();let latest={};let pins=[];
 try{pins=JSON.parse(localStorage.getItem("ge-pins")||"[]").map(Number).filter(n=>n>0);}catch(e){pins=[];}
 function save(){localStorage.setItem("ge-pins",JSON.stringify(pins));}
 function fmt(n){if(n==null)return"—";return Math.round(n).toLocaleString("en-US")+" gp";}
+function fmtK(n){if(n==null)return"—";const a=Math.abs(n);if(a>=1e9)return(n/1e9).toFixed(2)+"b";if(a>=1e6)return(n/1e6).toFixed(2)+"m";if(a>=1e3)return(n/1e3).toFixed(1)+"k";return""+Math.round(n);}
 function ago(t){if(!t)return"never";const s=Math.max(0,(Date.now()/1000-t)|0);if(s<60)return s+"s ago";const m=(s/60)|0;if(m<60)return m+"m ago";const h=(m/60)|0;if(h<24)return h+"h ago";return ((h/24)|0)+"d ago";}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 async function loadMapping(){
@@ -126,6 +129,7 @@ async function loadPrices(){
   const j=await r.json();latest=j.data||{};
   statusEl.textContent="Live prices updated "+new Date().toLocaleTimeString()+". Auto-refreshes every 60s.";
   renderPins();
+  if(q.value.trim().length>=2)doSearch();
 }
 function doSearch(){
   const s=q.value.trim().toLowerCase();results.innerHTML="";
@@ -136,12 +140,15 @@ function doSearch(){
   out.sort((a,b)=>(b.name.toLowerCase().startsWith(s)-a.name.toLowerCase().startsWith(s))||a.name.localeCompare(b.name));
   out.slice(0,20).forEach(m=>{
     const li=document.createElement("li");
-    li.innerHTML='<img loading="lazy" alt=""><span class="nm"></span><span class="meta"></span>';
+    li.innerHTML='<img loading="lazy" alt=""><span class="nm"></span><span class="meta"></span><span class="p"></span>';
     const lim=li.querySelector("img");
     if(m.icon){lim.src="https://oldschool.runescape.wiki/w/Special:FilePath/"+encodeURIComponent(m.icon);lim.onerror=()=>{lim.style.display="none";};}
     else lim.style.display="none";
     li.querySelector(".nm").textContent=m.name;
     li.querySelector(".meta").textContent=(m.members?"Members":"F2P")+" · limit "+(m.limit||"?");
+    const pr=latest[m.id]||{},pel=li.querySelector(".p");
+    if(pr.high!=null||pr.low!=null){pel.innerHTML="";const bb=document.createElement("b");bb.className="buy";bb.textContent="B "+fmtK(pr.high);const ss=document.createElement("b");ss.className="sell";ss.textContent="S "+fmtK(pr.low);pel.append(bb," · ",ss);}
+    else pel.textContent="—";
     const b=document.createElement("button");b.type="button";b.className="small"+(pinned.has(m.id)?"":" primary");
     b.textContent=pinned.has(m.id)?"Pinned ✓":"Pin";
     b.disabled=pinned.has(m.id);
